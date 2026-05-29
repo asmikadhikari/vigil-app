@@ -8,11 +8,11 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ==========================================
--- 1. TABLE DEFINITIONS
+-- 1. TABLE DEFINITIONS (IF NOT EXISTS)
 -- ==========================================
 
 -- A. Users Profile Table (synced with auth.users)
-CREATE TABLE public.users (
+CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     company_name TEXT,
@@ -23,7 +23,7 @@ CREATE TABLE public.users (
 );
 
 -- B. Competitors Table
-CREATE TABLE public.competitors (
+CREATE TABLE IF NOT EXISTS public.competitors (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE public.competitors (
 );
 
 -- C. Competitor Sites / Tracked Pages
-CREATE TABLE public.competitor_sites (
+CREATE TABLE IF NOT EXISTS public.competitor_sites (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     competitor_id UUID NOT NULL REFERENCES public.competitors(id) ON DELETE CASCADE,
     url TEXT NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE public.competitor_sites (
 );
 
 -- D. Website Content Changes Table
-CREATE TABLE public.website_changes (
+CREATE TABLE IF NOT EXISTS public.website_changes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     competitor_id UUID NOT NULL REFERENCES public.competitors(id) ON DELETE CASCADE,
     site_id UUID NOT NULL REFERENCES public.competitor_sites(id) ON DELETE CASCADE,
@@ -59,7 +59,7 @@ CREATE TABLE public.website_changes (
 );
 
 -- E. Job Postings Table (SerpAPI / Careers scraper)
-CREATE TABLE public.job_postings (
+CREATE TABLE IF NOT EXISTS public.job_postings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     competitor_id UUID NOT NULL REFERENCES public.competitors(id) ON DELETE CASCADE,
     role TEXT NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE public.job_postings (
 );
 
 -- F. Customer Reviews Table
-CREATE TABLE public.reviews (
+CREATE TABLE IF NOT EXISTS public.reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     competitor_id UUID NOT NULL REFERENCES public.competitors(id) ON DELETE CASCADE,
     source TEXT NOT NULL CHECK (source IN ('g2', 'trustpilot', 'capterra', 'reddit', 'google')),
@@ -88,7 +88,7 @@ CREATE TABLE public.reviews (
 );
 
 -- G. Ad Campaigns Table
-CREATE TABLE public.ad_campaigns (
+CREATE TABLE IF NOT EXISTS public.ad_campaigns (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     competitor_id UUID NOT NULL REFERENCES public.competitors(id) ON DELETE CASCADE,
     platform TEXT NOT NULL CHECK (platform IN ('google', 'meta', 'linkedin')),
@@ -102,7 +102,7 @@ CREATE TABLE public.ad_campaigns (
 );
 
 -- H. Competitor Pricing Tier Cache
-CREATE TABLE public.competitor_pricing (
+CREATE TABLE IF NOT EXISTS public.competitor_pricing (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     competitor_id UUID NOT NULL REFERENCES public.competitors(id) ON DELETE CASCADE,
     tier_name TEXT NOT NULL,
@@ -114,7 +114,7 @@ CREATE TABLE public.competitor_pricing (
 );
 
 -- I. User Alerts Feed
-CREATE TABLE public.alerts (
+CREATE TABLE IF NOT EXISTS public.alerts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     competitor_id UUID NOT NULL REFERENCES public.competitors(id) ON DELETE CASCADE,
@@ -129,7 +129,7 @@ CREATE TABLE public.alerts (
 );
 
 -- J. Weekly Intelligence Briefs Table
-CREATE TABLE public.weekly_briefs (
+CREATE TABLE IF NOT EXISTS public.weekly_briefs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     week_start DATE NOT NULL,
@@ -142,19 +142,19 @@ CREATE TABLE public.weekly_briefs (
 );
 
 -- ==========================================
--- 2. INDEX OPTIMIZATIONS
+-- 2. INDEX OPTIMIZATIONS (IF NOT EXISTS)
 -- ==========================================
 -- Performance indexes for tenant segregation queries and timeline renders
-CREATE INDEX idx_competitors_user ON public.competitors(user_id);
-CREATE INDEX idx_competitor_sites_competitor ON public.competitor_sites(competitor_id);
-CREATE INDEX idx_website_changes_competitor ON public.website_changes(competitor_id);
-CREATE INDEX idx_website_changes_detected ON public.website_changes(detected_at DESC);
-CREATE INDEX idx_job_postings_competitor ON public.job_postings(competitor_id);
-CREATE INDEX idx_reviews_competitor ON public.reviews(competitor_id);
-CREATE INDEX idx_ad_campaigns_competitor ON public.ad_campaigns(competitor_id);
-CREATE INDEX idx_alerts_user ON public.alerts(user_id);
-CREATE INDEX idx_alerts_is_read ON public.alerts(user_id, is_read);
-CREATE INDEX idx_weekly_briefs_user ON public.weekly_briefs(user_id, week_start DESC);
+CREATE INDEX IF NOT EXISTS idx_competitors_user ON public.competitors(user_id);
+CREATE INDEX IF NOT EXISTS idx_competitor_sites_competitor ON public.competitor_sites(competitor_id);
+CREATE INDEX IF NOT EXISTS idx_website_changes_competitor ON public.website_changes(competitor_id);
+CREATE INDEX IF NOT EXISTS idx_website_changes_detected ON public.website_changes(detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_job_postings_competitor ON public.job_postings(competitor_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_competitor ON public.reviews(competitor_id);
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_competitor ON public.ad_campaigns(competitor_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_user ON public.alerts(user_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_is_read ON public.alerts(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_weekly_briefs_user ON public.weekly_briefs(user_id, week_start DESC);
 
 -- ==========================================
 -- 3. ROW-LEVEL SECURITY (RLS) POLICIES
@@ -171,17 +171,25 @@ ALTER TABLE public.competitor_pricing ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.weekly_briefs ENABLE ROW LEVEL SECURITY;
 
--- Create Policies
+-- Drop existing policies to allow re-running safely
+DROP POLICY IF EXISTS users_isolation ON public.users;
+DROP POLICY IF EXISTS competitors_isolation ON public.competitors;
+DROP POLICY IF EXISTS competitor_sites_isolation ON public.competitor_sites;
+DROP POLICY IF EXISTS website_changes_isolation ON public.website_changes;
+DROP POLICY IF EXISTS job_postings_isolation ON public.job_postings;
+DROP POLICY IF EXISTS reviews_isolation ON public.reviews;
+DROP POLICY IF EXISTS ad_campaigns_isolation ON public.ad_campaigns;
+DROP POLICY IF EXISTS competitor_pricing_isolation ON public.competitor_pricing;
+DROP POLICY IF EXISTS alerts_isolation ON public.alerts;
+DROP POLICY IF EXISTS weekly_briefs_isolation ON public.weekly_briefs;
 
--- 1. Users policies (read/write own profile)
+-- Create Policies
 CREATE POLICY users_isolation ON public.users 
     FOR ALL USING (auth.uid() = id);
 
--- 2. Competitors policies (read/write own monitored list)
 CREATE POLICY competitors_isolation ON public.competitors 
     FOR ALL USING (auth.uid() = user_id);
 
--- 3. Competitor Sites policies (verified via competitors table relationship)
 CREATE POLICY competitor_sites_isolation ON public.competitor_sites 
     FOR ALL USING (
         EXISTS (
@@ -190,7 +198,6 @@ CREATE POLICY competitor_sites_isolation ON public.competitor_sites
         )
     );
 
--- 4. Website Changes policies
 CREATE POLICY website_changes_isolation ON public.website_changes 
     FOR ALL USING (
         EXISTS (
@@ -199,7 +206,6 @@ CREATE POLICY website_changes_isolation ON public.website_changes
         )
     );
 
--- 5. Job Postings policies
 CREATE POLICY job_postings_isolation ON public.job_postings 
     FOR ALL USING (
         EXISTS (
@@ -208,7 +214,6 @@ CREATE POLICY job_postings_isolation ON public.job_postings
         )
     );
 
--- 6. Reviews policies
 CREATE POLICY reviews_isolation ON public.reviews 
     FOR ALL USING (
         EXISTS (
@@ -217,7 +222,6 @@ CREATE POLICY reviews_isolation ON public.reviews
         )
     );
 
--- 7. Ad Campaigns policies
 CREATE POLICY ad_campaigns_isolation ON public.ad_campaigns 
     FOR ALL USING (
         EXISTS (
@@ -226,7 +230,6 @@ CREATE POLICY ad_campaigns_isolation ON public.ad_campaigns
         )
     );
 
--- 8. Competitor Pricing policies
 CREATE POLICY competitor_pricing_isolation ON public.competitor_pricing 
     FOR ALL USING (
         EXISTS (
@@ -235,11 +238,9 @@ CREATE POLICY competitor_pricing_isolation ON public.competitor_pricing
         )
     );
 
--- 9. Alerts policies
 CREATE POLICY alerts_isolation ON public.alerts 
     FOR ALL USING (auth.uid() = user_id);
 
--- 10. Weekly Briefs policies
 CREATE POLICY weekly_briefs_isolation ON public.weekly_briefs 
     FOR ALL USING (auth.uid() = user_id);
 
@@ -251,16 +252,13 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
     INSERT INTO public.users (id, email, plan_tier)
-    VALUES (
-        new.id,
-        new.email,
-        'free'
-    );
+    VALUES (new.id, new.email, 'free');
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Bind the sync trigger function to the auth.users table
+-- Drop and recreate trigger to allow safe re-runs
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
