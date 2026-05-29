@@ -1,11 +1,7 @@
 [build]
   base = "web/"
   command = "npm run build"
+  publish = ".next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-[[redirects]]
-  from = "/_next/static/*"
-  to = "/.next/static/:splat"
-  status = 200
