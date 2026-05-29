@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  /* Supabase-style semantic tokens */
+  --background: #1a1a1a;
+  --surface-75: #1e1e1e;
+  --surface-100: #252525;
+  --surface-200: #2e2e2e;
+  --surface-300: #383838;
+  --border: #2e2e2e;
+  --border-strong: #444;
+  --foreground: #ededed;
+  --foreground-light: #a0a0a0;
+  --foreground-lighter: #666;
+  --foreground-muted: #444;
+  /* Brand — teal/green (trust + growth) */
+  --brand: #3ecf8e;
+  --brand-hover: #2eb87a;
+  --brand-dark: #1a9a6a;
+  /* Danger */
+  --danger: #ef4444;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Gradient border card trick */
+.card-border {
+  padding: 1px;
+  background: linear-gradient(to bottom, var(--border), rgba(46, 46, 46, 0.5));
+  border-radius: 0.75rem;
+}
+.card-border > * {
+  border-radius: calc(0.75rem - 1px);
+}
+
+/* Logo marquee animation */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Smooth transitions, respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

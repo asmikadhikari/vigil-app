@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Vigil",
+    "slug": "vigil-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "vigil",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vigil.mobile"
+    },
+    "android": {
+      "package": "com.vigil.mobile"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "root": "./app"
+        }
+      ]
+    ]
+  }
+}
